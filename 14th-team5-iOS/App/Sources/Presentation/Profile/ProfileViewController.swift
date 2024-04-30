@@ -22,6 +22,8 @@ import Then
 public final class ProfileViewController: BaseViewController<ProfileViewReactor> {
 
     
+    //MARK: Views
+  private lazy var profileSegementControl: BibbiSegmentedControl = BibbiSegmentedControl(isUpdated: true)
     private var pickerConfiguration: PHPickerConfiguration = {
         var configuration: PHPickerConfiguration = PHPickerConfiguration()
         configuration.filter = .images
@@ -29,11 +31,6 @@ public final class ProfileViewController: BaseViewController<ProfileViewReactor>
         configuration.selection = .default
         return configuration
     }()
-    
-    
-    
-    //MARK: Views
-
     private let profileIndicatorView: BlurAiraplaneLottieView = BlurAiraplaneLottieView()
     private lazy var profileView: BibbiProfileView = BibbiProfileView(cornerRadius: 50)
     private let profileLineView: UIView = UIView()
@@ -71,7 +68,7 @@ public final class ProfileViewController: BaseViewController<ProfileViewReactor>
     
     public override func setupUI() {
         super.setupUI()
-        view.addSubviews(profileView, profileLineView, profileFeedCollectionView, profileIndicatorView)
+        view.addSubviews(profileView, profileLineView, profileSegementControl, profileFeedCollectionView, profileIndicatorView)
     }
     
     public override func setupAttributes() {
@@ -116,11 +113,19 @@ public final class ProfileViewController: BaseViewController<ProfileViewReactor>
             $0.left.right.equalToSuperview()
             $0.top.equalTo(profileView.snp.bottom).offset(24)
         }
-        
-        profileFeedCollectionView.snp.makeConstraints {
-            $0.top.equalTo(profileLineView.snp.bottom).offset(1)
-            $0.left.right.bottom.equalToSuperview()
+      
+        profileSegementControl.snp.makeConstraints {
+            $0.top.equalTo(profileLineView.snp.bottom).offset(20)
+            $0.height.equalTo(40)
+            $0.width.equalTo(140)
+            $0.centerX.equalTo(profileView)
         }
+       
+       profileFeedCollectionView.snp.makeConstraints {
+         $0.top.equalTo(profileSegementControl.snp.bottom).offset(20)
+         $0.left.right.bottom.equalToSuperview()
+       }
+      
         
         profileIndicatorView.snp.makeConstraints {
             $0.center.equalToSuperview()
@@ -166,7 +171,6 @@ public final class ProfileViewController: BaseViewController<ProfileViewReactor>
             .disposed(by: disposeBag)
         
         
-        //프로필 이미지 초기화 할 경우 요기 Action에 이동
         NotificationCenter.default.rx
             .notification(.ProfileImageInitializationUpdate)
             .map { _ in Reactor.Action.didTapInitProfile }
@@ -208,6 +212,32 @@ public final class ProfileViewController: BaseViewController<ProfileViewReactor>
             .distinctUntilChanged()
             .bind(to: profileView.rx.isSetting)
             .disposed(by: disposeBag)
+      
+        profileSegementControl
+            .survivalButton.rx.tap
+            .throttle(.milliseconds(300), scheduler: MainScheduler.instance)
+            .map { Reactor.Action.didTapSegementControl(.survival) }
+            .bind(to: reactor.action)
+            .disposed(by: disposeBag)
+      
+        profileSegementControl
+            .missionButton.rx.tap
+            .throttle(.milliseconds(300), scheduler: MainScheduler.instance)
+            .map { Reactor.Action.didTapSegementControl(.mission) }
+            .bind(to: reactor.action)
+            .disposed(by: disposeBag)
+      
+      
+      
+      
+        reactor
+          .state.map { $0.feedType == .survival ? true : false }
+          .distinctUntilChanged()
+          .observe(on: MainScheduler.instance)
+          .bind(to: profileSegementControl.rx.isSelected)
+          .disposed(by: disposeBag)
+      
+      
         
         
         reactor.pulse(\.$profileMemberEntity)
@@ -328,7 +358,7 @@ extension ProfileViewController: UICollectionViewDelegateFlowLayout {
     }
     
     public func collectionView(_ collectionView: UICollectionView, layout collectionViewLayout: UICollectionViewLayout, insetForSectionAt section: Int) -> UIEdgeInsets {
-        return UIEdgeInsets(top: 24, left: 0, bottom: 0, right: 0)
+        return UIEdgeInsets(top: 0, left: 0, bottom: 0, right: 0)
     }
     
     public func collectionView(_ collectionView: UICollectionView, layout collectionViewLayout: UICollectionViewLayout, minimumInteritemSpacingForSectionAt section: Int) -> CGFloat {
