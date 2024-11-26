@@ -19,17 +19,17 @@ public final class CameraViewReactor: Reactor {
     public var initialState: State
     
     
-    @Injected private var createProfileImageUseCase: CreateCameraUseCaseProtocol
     @Injected private var uploadImageUseCase: FetchCameraUploadImageUseCaseProtocol
-    @Injected private var fetchMissionUseCase: FetchCameraTodayMissionUseCaseProtocol
+    @Injected private var fetchDailyMissionUseCase: FetchDailyMissonContentUseCaseProtocol
     @Injected private var fetchRealEmojiUpdateUseCase: FetchCameraRealEmojiUpdateUseCaseProtocol
     @Injected private var fetchRealEmojiCreateUseCase: FetchCameraRealEmojiUploadUseCaseProtocol
-    @Injected private var editProfileImageUseCase: EditCameraProfileImageUseCaseProtocol
     @Injected private var fetchRealEmojiListUseCase: FetchCameraRealEmojiListUseCaseProtocol
     @Injected private var fetchRealEmojiPreSignedUseCase: FetchCameraRealEmojiUseCaseProtocol
     @Injected private var fetchMyMemberIdUseCase: FetchMyMemberIdUseCaseProtocol
     @Injected private var provider: ServiceProviderProtocol
-    
+    @Injected private var createPresignedURLUseCase: CreateMembersPresignedURLUseCaseProtocol
+    @Injected private var updateMembersProfileUseCase: UpdateMembersProfileUseCaseProtocol
+    @Navigator var cameraNavigator: CameraNavigatorProtocol
     
     public var cameraType: UploadLocation
     public var memberId: String
@@ -48,20 +48,18 @@ public final class CameraViewReactor: Reactor {
         case setLoading(Bool)
         case setPosition(Bool)
         case setFlashMode(Bool)
-        case uploadImageToS3(Bool)
-        case setAccountProfileData(Data)
         case setPinchZoomScale(CGFloat)
         case setZoomScale(CGFloat)
-        case setProfileImageURLResponse(CameraPreSignedEntity?)
+        case setDailyMissionrResponse(MissonTodayContentEntity?)
+        case setProfilePresignedResponse(CreateMemberPresignedEntity?)
         case setProfileMemberResponse(MembersProfileEntity?)
         case setRealEmojiImageURLResponse(CameraRealEmojiPreSignedEntity?)
         case setRealEmojiImageCreateResponse(CameraCreateRealEmojiEntity?)
         case setRealEmojiItems([CameraRealEmojiImageItemEntity?])
         case setRealEmojiSection([EmojiSectionItem])
-        case setMissionResponse(CameraTodayMssionEntity?)
         case setErrorAlert(Bool)
         case setRealEmojiType(Emojis)
-        case setFeedImageData(Data)
+        case setImageData(Data)
         case setUpdateEmojiImage(URL)
     }
     
@@ -69,21 +67,20 @@ public final class CameraViewReactor: Reactor {
         @Pulse var isLoading: Bool
         @Pulse var isFlashMode: Bool
         @Pulse var isSwitchPosition: Bool
-        @Pulse var profileImageURLEntity: CameraPreSignedEntity?
+        @Pulse var missionEntity: MissonTodayContentEntity?
+        @Pulse var memberPresignedEntity: CreateMemberPresignedEntity?
         @Pulse var realEmojiURLEntity: CameraRealEmojiPreSignedEntity?
         @Pulse var realEmojiCreateEntity: CameraCreateRealEmojiEntity?
         @Pulse var realEmojiEntity: [CameraRealEmojiImageItemEntity?]
-        @Pulse var missionEntity: CameraTodayMssionEntity?
         @Pulse var realEmojiSection: [EmojiSectionModel]
         @Pulse var zoomScale: CGFloat
         @Pulse var pinchZoomScale: CGFloat
-        @Pulse var feedImageData: Data?
+        @Pulse var imageData: Data?
         var updateEmojiImage: URL?
         var emojiType: Emojis = .emoji(forIndex: 1)
         @Pulse var cameraType: UploadLocation = .survival
         var accountImage: Data?
         var memberId: String
-        var isUpload: Bool
         @Pulse var isError: Bool
         @Pulse var profileMemberEntity: MembersProfileEntity?
     }
@@ -99,23 +96,14 @@ public final class CameraViewReactor: Reactor {
             isLoading: true,
             isFlashMode: false,
             isSwitchPosition: false,
-            profileImageURLEntity: nil,
-            realEmojiURLEntity: nil,
-            realEmojiCreateEntity: nil,
             realEmojiEntity: [],
-            missionEntity: nil,
             realEmojiSection: [.realEmoji([])],
             zoomScale: 1.0,
             pinchZoomScale: 1.0,
-            feedImageData: nil,
-            updateEmojiImage: nil,
             emojiType: emojiType,
             cameraType: cameraType,
-            accountImage: nil,
             memberId: memberId,
-            isUpload: false,
-            isError: false,
-            profileMemberEntity: nil
+            isError: false
         )
     }
     
@@ -162,14 +150,8 @@ public final class CameraViewReactor: Reactor {
             newState.isSwitchPosition = isPosition
         case let .setFlashMode(isFlash):
             newState.isFlashMode = isFlash
-        case let .setProfileImageURLResponse(entity):
-            newState.profileImageURLEntity = entity
-        case let .uploadImageToS3(isProfileEdit):
-            newState.isUpload = isProfileEdit
         case let .setProfileMemberResponse(entity):
             newState.profileMemberEntity = entity
-        case let .setAccountProfileData(accountImage):
-            newState.accountImage = accountImage
         case let .setRealEmojiImageURLResponse(entity):
             newState.realEmojiURLEntity = entity
         case let .setRealEmojiImageCreateResponse(entity):
@@ -189,9 +171,11 @@ public final class CameraViewReactor: Reactor {
             newState.zoomScale = zoomScale
         case let .setPinchZoomScale(pinchZoomScale):
             newState.pinchZoomScale = pinchZoomScale
-        case let .setFeedImageData(feedImage):
-            newState.feedImageData = feedImage
-        case let .setMissionResponse(missionEntity):
+        case let .setImageData(feedImage):
+            newState.imageData = feedImage
+        case let .setProfilePresignedResponse(memberPresignedEntity):
+            newState.memberPresignedEntity = memberPresignedEntity
+        case let .setDailyMissionrResponse(missionEntity):
             newState.missionEntity = missionEntity
         }
         
@@ -258,19 +242,14 @@ extension CameraViewReactor {
                     }
             )
         case .mission:
-            return fetchMissionUseCase.execute()
-                .asObservable()
-                .withUnretained(self)
-                .flatMap { owner, entity -> Observable<CameraViewReactor.Mutation> in
-                    
+            return fetchDailyMissionUseCase.execute()
+                .flatMap { entity -> Observable<Mutation> in
                     return .concat(
                         .just(.setLoading(false)),
-                        .just(.setMissionResponse(entity)),
+                        .just(.setDailyMissionrResponse(entity)),
                         .just(.setLoading(true))
                     )
                 }
-            
-            
         default:
             return .empty()
         }
@@ -282,68 +261,57 @@ extension CameraViewReactor {
         case .survival, .mission:
             return .concat(
                 .just(.setLoading(false)),
-                .just(.setFeedImageData(imageData)),
+                .just(.setImageData(imageData)),
                 .just(.setLoading(true))
             )
             
+        case .account:
+            let profileImage = "\(imageData.hashValue).jpg"
+            let body = CreateMemberPresignedReqeust(imageName: profileImage)
+            
+            return createPresignedURLUseCase.execute(body: body, imageData: imageData)
+                .flatMap { entity -> Observable<Mutation> in
+                    guard let _ = entity?.imageURL else {
+                        return .error(BBUploadError.invalidServerResponse)
+                    }
+                    
+                    return .concat(
+                        .just(.setLoading(false)),
+                        .just(.setProfilePresignedResponse(entity)),
+                        .just(.setImageData(imageData)),
+                        .just(.setLoading(true))
+                    )
+                }.catch { [weak self] error in
+                    self?.cameraNavigator.showErrorToast(error.localizedDescription)
+                    return .empty()
+                }
         case  .profile:
             let profileImage = "\(imageData.hashValue).jpg"
-            let body = CreatePresignedURLRequest(imageName: profileImage)
+            let body = CreateMemberPresignedReqeust(imageName: profileImage)
             
-            return .concat(
-                .just(.setLoading(false)),
-                createProfileImageUseCase.execute(body: body)
-                    .withUnretained(self)
-                    .subscribe(on: ConcurrentDispatchQueueScheduler.init(qos: .background))
-                    .flatMap { owner, entity -> Observable<CameraViewReactor.Mutation> in
-                        guard let remoteURL = entity?.imageURL else {
-                            return .concat(
-                                .just(.setLoading(true)),
-                                .just(.setErrorAlert(true))
-                            )
-                        }
-                        
-                        return owner.uploadImageUseCase.execute(remoteURL, image: imageData)
-                            .subscribe(on: ConcurrentDispatchQueueScheduler.init(qos: .background))
-                            .flatMap { isSuccess -> Observable<CameraViewReactor.Mutation> in
-                                
-                                if owner.memberId.isEmpty {
-                                    return .concat(
-                                        .just(.setProfileImageURLResponse(entity)),
-                                        .just(.setAccountProfileData(imageData)),
-                                        .just(.setErrorAlert(false)),
-                                        .just(.setLoading(true))
-                                    )
-                                }
-                                
-                                let originalURL = owner.configureProfileOriginalS3URL(url: remoteURL, with: .profile)
-                                let body = UpdateProfileImageRequest(profileImageUrl: originalURL)
-                                
-                                if isSuccess {
-                                    return owner.editProfileImageUseCase.execute(memberId: owner.memberId, body: body)
-                                        .subscribe(on: ConcurrentDispatchQueueScheduler.init(qos: .background))
-                                        .flatMap { editEntity -> Observable<CameraViewReactor.Mutation> in
-                                            
-                                            return .concat(
-                                                .just(.setProfileImageURLResponse(entity)),
-                                                .just(.uploadImageToS3(isSuccess)),
-                                                .just(.setProfileMemberResponse(editEntity)),
-                                                .just(.setErrorAlert(false)),
-                                                .just(.setLoading(true))
-                                            )
-                                            
-                                        }
-                                } else {
-                                    return .concat(
-                                        .just(.setLoading(true)),
-                                        .just(.setErrorAlert(true))
-                                    )
-                                }
-                                
-                            }
+            return createPresignedURLUseCase.execute(body: body, imageData: imageData)
+                .withUnretained(self)
+                .flatMap { owner, entity -> Observable<Mutation> in
+                    guard let presignedURL = entity?.imageURL else {
+                        return .error(BBUploadError.invalidServerResponse)
                     }
-                
-            )
+                    let updateImageURL = owner.configureProfileOriginalS3URL(url: presignedURL, with: .profile)
+                    let body = UpdateMemberImageRequest(profileImageUrl: updateImageURL)
+                    return owner.updateMembersProfileUseCase.execute(memberId: owner.memberId, body: body)
+                        .flatMap { entity -> Observable<Mutation> in
+                            return .concat(
+                                .just(.setLoading(false)),
+                                .just(.setProfileMemberResponse(entity)),
+                                .just(.setLoading(true))
+                            )
+                        }.catch { [weak self] error in
+                            self?.cameraNavigator.showErrorToast(error.localizedDescription)
+                            return .empty()
+                        }
+                }.catch { [weak self] error in
+                    self?.cameraNavigator.showErrorToast(error.localizedDescription)
+                    return .empty()
+                }
         case .realEmoji:
             guard let memberId = fetchMyMemberIdUseCase.execute() else {
                 return .just(.setErrorAlert(true))
@@ -377,7 +345,6 @@ extension CameraViewReactor {
                                                         return .concat(
                                                             .just(.setRealEmojiImageURLResponse(entity)),
                                                             .just(.setRealEmojiItems(reloadEntity)),
-                                                            .just(.uploadImageToS3(isSuccess)),
                                                             .just(.setRealEmojiImageCreateResponse(realEmojiEntity)),
                                                             .just(.setErrorAlert(false)),
                                                             .just(.setLoading(true))
@@ -405,7 +372,7 @@ extension CameraViewReactor {
                         .flatMap { owner, entity -> Observable<CameraViewReactor.Mutation> in
                             guard let remoteURL = entity?.imageURL else { return .just(.setErrorAlert(true))}
                             let originalURL = owner.configureProfileOriginalS3URL(url: remoteURL, with: .realEmoji)
-
+                            
                             return owner.uploadImageUseCase.execute(remoteURL, image: imageData)
                                 .subscribe(on: ConcurrentDispatchQueueScheduler.init(qos: .background))
                                 .asObservable()
@@ -433,8 +400,6 @@ extension CameraViewReactor {
                 
             }
         }
-        
-        
     }
     
 }

@@ -9,35 +9,47 @@ import Foundation
 
 import Core
 
-enum MembersAPIs: API {
-    case profileMember(String)
-    case profilePost
-    case profileAlbumUploadImageURL
-    case profileUploadToPreSignedURL(String)
-    case profileEditImage(String)
-    case profileDeleteImage(String)
-    case accountResign(String)
+
+
+enum MembersAPIs: BBAPI {
+    /// 회원 프로필 조회 API
+    case fetchMember(memberId: String)
+    /// 회원 탈퇴 API
+    case deleteMember(memberId: String)
+    /// 회원 콕 찌르기 API
+    case createMemberPick(memberId: String)
+    /// 회원 프로필 Presigend URL 요청 API
+    case createMemberPresignedURL(body: CreateMemberPresignedURLRequestDTO)
+    /// 회원 이름 수정 API
+    case updateMemberName(memberId: String, body: UpdateMemberNameRequestDTO)
+    /// 회원 프로필 이미지 수정 API
+    case updateMemberProfileImage(memberId: String, body: UpdateMemberImageRequestDTO)
+    /// 회원 프로필 이미지 삭제 API
+    case deleteMemberProfileImage(memberId: String)
     
-    var spec: APISpec {
+
+    var spec: Spec {
         switch self {
-        case let .profileMember(memberId):
-            return APISpec(method: .get, url: "\(BibbiAPI.hostApi)/members/\(memberId)")
-        case .profilePost:
-            return APISpec(method: .get, url: "\(BibbiAPI.hostApi)/posts")
-        case .profileAlbumUploadImageURL:
-            return APISpec(method: .post, url: "\(BibbiAPI.hostApi)/members/image-upload-request")
-        case let .profileUploadToPreSignedURL(url):
-            return APISpec(method: .put, url: url)
-        case let .profileEditImage(memberId):
-            return APISpec(method: .put, url: "\(BibbiAPI.hostApi)/members/profile-image-url/\(memberId)")
-        case let .profileDeleteImage(memberId):
-            return APISpec(method: .delete, url: "\(BibbiAPI.hostApi)/members/profile-image-url/\(memberId)")
-        case let .accountResign(memberId):
-            return APISpec(method: .delete, url: "\(BibbiAPI.hostApi)/members/\(memberId)")
-        
+        case let .fetchMember(memberId):
+            return Spec(method: .get, path: "/members/\(memberId)")
+        case let .deleteMember(memberId):
+            return Spec(method: .delete, path: "/members/\(memberId)")
+        case let .createMemberPick(memberId):
+            return Spec(method: .post, path: "/members/\(memberId)/pick")
+        case let .createMemberPresignedURL(body):
+            return Spec(method: .post, path: "/members/image-upload-request", bodyParametersEncodable: body)
+        case let .updateMemberName(memberId, body):
+            return Spec(method: .put, path: "/members/name/\(memberId)", bodyParametersEncodable: body)
+        case let .updateMemberProfileImage(memberId, body):
+            return Spec(method: .put, path: "/members/profile-image-url/\(memberId)", bodyParametersEncodable: body)
+        case let .deleteMemberProfileImage(memberId):
+            return Spec(method: .delete, path: "/members/profile-image-url/\(memberId)")
         }
     }
     
     
+    final class Worker: BBRxAPIWorker {
+        init() { }
+    }
 }
 

@@ -8,91 +8,93 @@
 import Core
 import Foundation
 
-import Alamofire
-import Domain
 import RxSwift
 
 
 typealias MembersAPIWorker = MembersAPIs.Worker
 
-extension MembersAPIs {
-    final class Worker: APIWorker {
-        static let queue = {
-            ConcurrentDispatchQueueScheduler(queue: DispatchQueue(label: "ProfileAPIQueue", qos: .utility))
-        }()
-        
-        override init() {
-            super.init()
-            self.id = "ProfileAPIWorker"
-        }
-        
-    }
-}
-
-
 extension MembersAPIWorker {
     
-    public func fetchProfileMember(memberId: String) -> Single<MembersProfileResponseDTO?> {
-        let spec = MembersAPIs.profileMember(memberId).spec
-        let accessToken: String = App.Repository.token.accessToken.value?.accessToken ?? ""
-        let headers = BibbiHeader.commonHeaders(accessToken: accessToken)
-        return request(spec: spec, headers: headers)
-            .subscribe(on: Self.queue)
-            .map(MembersProfileResponseDTO.self)
-            .catchAndReturn(nil)
-            .asSingle()
+    /// 회원 프로필 정보를 조회하기 위한 Method 입니다.
+    /// HTTP Method : GET
+    /// - Parameters : memberId (조회할 회원 ID)
+    /// - Returns : MembersProfileResponseDTO
+    func fetchMember(memberId: String) -> Observable<MembersProfileResponseDTO?> {
+        let spec = MembersAPIs.fetchMember(memberId: memberId).spec
         
+        return request(spec)
     }
     
-    public func createProfileImagePresingedURL(parameters: Encodable) -> Single<CameraDisplayImageResponseDTO?> {
-        let spec = MembersAPIs.profileAlbumUploadImageURL.spec
-        let accessToken: String = App.Repository.token.accessToken.value?.accessToken ?? ""
-        let headers = BibbiHeader.commonHeaders(accessToken: accessToken)
-        return request(spec: spec, headers: headers, jsonEncodable: parameters)
-            .subscribe(on: Self.queue)
-            .map(CameraDisplayImageResponseDTO.self)
-            .catchAndReturn(nil)
-            .asSingle()
-    }
-    
-    public func uploadToProfilePresingedURL(toURL url: String, with imageData: Data) -> Single<Bool> {
-        let spec = MembersAPIs.profileUploadToPreSignedURL(url).spec
-        let accessToken: String = App.Repository.token.accessToken.value?.accessToken ?? ""
-        let headers = BibbiHeader.commonHeaders(accessToken: accessToken)
-        return upload(spec: spec, headers: headers, image: imageData)
-            .subscribe(on: Self.queue)
-            .catchAndReturn(false)
-            .map { _ in true }
-    }
-    
-    public func updateProfileAlbumImageToS3(memberId: String, parameter: Encodable) -> Single<MembersProfileResponseDTO?> {
-        let spec = MembersAPIs.profileEditImage(memberId).spec
-        let accessToken: String = App.Repository.token.accessToken.value?.accessToken ?? ""
-        let headers = BibbiHeader.commonHeaders(accessToken: accessToken)
-        return request(spec: spec, headers: headers, jsonEncodable: parameter)
-            .subscribe(on: Self.queue)
-            .map(MembersProfileResponseDTO.self)
-            .catchAndReturn(nil)
-            .asSingle()
-    }
-    
-    public func deleteProfileImageToS3(memberId: String) -> Single<MembersProfileResponseDTO?> {
-        let spec = MembersAPIs.profileDeleteImage(memberId).spec
-        return request(spec: spec)
-            .subscribe(on: Self.queue)
-            .map(MembersProfileResponseDTO.self)
-            .catchAndReturn(nil)
-            .asSingle()
-    }
-    
-    public func deleteAccountUser(memberId: String, body: Encodable) -> Single<AccountResignResponseDTO?> {
-        let spec = ResignAPIs.accountResign(memberId).spec
+    /// 회원 탈퇴 API 요청 Method 입니다.
+    /// HTTP Method : DELETE
+    /// - Parameters:
+    ///     - memberId (탈퇴할 회원 ID)
+    /// - Returns : AccountResignResponseDTO
+    func deleteMember(memberId: String) -> Observable<DeleteMemberResponseDTO?> {
+        let spec = MembersAPIs.deleteMember(memberId: memberId).spec
         
-        return request(spec: spec, jsonEncodable: body)
-            .subscribe(on: Self.queue)
-            .map(AccountResignResponseDTO.self)
-            .catchAndReturn(nil)
-            .asSingle()
+        return request(spec)
     }
     
+    /// 사용자를 콕 찌리기 위한 API 요청 Method 입니다.
+    /// HTTP Method : POST
+    /// - Parameters : memberId (콕 찌를 회원 ID)
+    /// - Returns :PickResponseDTO
+    func createMemberPick(memberId: String) -> Observable<CreateMemberPickResponseDTO?> {
+        let spec = MembersAPIs.createMemberPick(memberId: memberId).spec
+        
+        return request(spec)
+    }
+    
+    /// 회읜 프로필 이미지 업로드를 하기 위한 Presigned-URL API 요청 Method
+    /// HTTP Method : POST
+    /// - Returns : CreateMemberPresignedURLResponseDTO
+    func createMemberPresignedURL(body: CreateMemberPresignedURLRequestDTO) -> Observable<CreateMemberPresignedURLResponseDTO?> {
+        let spec = MembersAPIs.createMemberPresignedURL(body: body).spec
+        
+        return request(spec)
+    }
+    
+    /// 회원 프로필 이름을 수정하기 위한 Method
+    /// HTTP Method : PUT
+    /// - Parameters :
+    ///     - memberId (수정할 회원 ID)
+    ///     - UpdateMemberNameRequestDTO (변경할 이름)
+    func updateMemberName(memberId: String, body: UpdateMemberNameRequestDTO) -> Observable<UpdateMemberNameResponseDTO?> {
+        let spec = MembersAPIs.updateMemberName(memberId: memberId, body: body).spec
+        
+        return request(spec)
+    }
+    
+    /// 사용자 프로필 이미지를 변경 하기 위한 Method 입니다.
+    /// HTTP Method : PUT
+    /// - Parameters :
+    ///     - memberId (수정할 회원 ID)
+    ///     -
+    ///- Returns : MembersProfileResponseDTO
+    func updateMemberProfileImage(memberId: String, body: UpdateMemberImageRequestDTO) -> Observable<MembersProfileResponseDTO?> {
+        let spec = MembersAPIs.updateMemberProfileImage(memberId: memberId, body: body).spec
+        
+        return request(spec)
+    }
+    
+    /// 사용자 프로필 이미지를 삭제 하기 위한 Method 입니다.
+    /// HTTP Method : DELETE
+    /// - Parameters : memberId (프로필 이미지를 삭제할 회원 ID)
+    /// - Returns : MembersProfileResponseDTO
+    func deleteMemberProfileImage(memberId: String) -> Observable<MembersProfileResponseDTO?> {
+        let spec = MembersAPIs.deleteMemberProfileImage(memberId: memberId).spec
+        
+        return request(spec)
+    }
+    
+    /// 프로필 이미지를 S3 Bucket에 업로드 하기 위한 Method 입니다.
+    /// HTTP Method : PUT
+    /// - Parameters
+    ///     - presignedURL : 서버에서 발급 받은 Presigned-URL
+    ///     - image : Image Data Type
+    /// - Returns : 업로드 성공 여부 확인 (Bool) Type
+    func updateS3MemberImageUpload(_ presignedURL: String, image: Data) -> Observable<Bool> {
+        return upload(presignedURL, with: image)
+    }
 }
