@@ -12,27 +12,30 @@ import DesignSystem
 /// BBToolTip에 (UI, Width, Height) Properties를 설정하기 위한 구조체입니다.
 public struct BBToolTipConfiguration {
     /// ToolTip Corner Radius
-    public var cornerRadius: CGFloat
+    public let cornerRadius: CGFloat
     /// TooTip TextFont Foreground Color
-    public var foregroundColor: UIColor
+    public let foregroundColor: UIColor
     /// TooTip Background Color
-    public var backgroundColor: UIColor
-    /// ToolTip Arrow Position
-    public var position: BBToolTipVerticalPosition
+    public let backgroundColor: UIColor
+    /// ToolTip Arrow YPosition
+    public let yPosition: BBToolTipVerticalPosition
+    /// ToolTip Arrow XPosition
+    public let xPosition: BBToolTipHorizontalPosition
     /// ToolTip Text Font
-    public var font: BBFontStyle
+    public let font: BBFontStyle
     /// ToolTip Content Text
-    public var contentText: String
+    public let contentText: String
     /// ToolTip Arrow Width
-    public var arrowWidth: CGFloat
+    public let arrowWidth: CGFloat
     /// ToolTip Arrow Height
-    public var arrowHeight: CGFloat
+    public let arrowHeight: CGFloat
     
     public init(
         cornerRadius: CGFloat = 12,
         foregroundColor: UIColor = .bibbiBlack,
         backgroundColor: UIColor = .mainYellow,
-        position: BBToolTipVerticalPosition = .top,
+        yPosition: BBToolTipVerticalPosition = .bottom,
+        xPosition: BBToolTipHorizontalPosition = .center,
         font: BBFontStyle = .body2Regular,
         contentText: String = "",
         arrowWidth: CGFloat = 15,
@@ -41,7 +44,8 @@ public struct BBToolTipConfiguration {
         self.cornerRadius = cornerRadius
         self.foregroundColor = foregroundColor
         self.backgroundColor = backgroundColor
-        self.position = position
+        self.xPosition = xPosition
+        self.yPosition = yPosition
         self.font = font
         self.contentText = contentText
         self.arrowWidth = arrowWidth

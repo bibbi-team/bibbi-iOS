@@ -1,29 +1,39 @@
 //
-//  BBDrawable.swift
+//  BBBaseToolTipView.swift
 //  Core
 //
-//  Created by Kim dohyun on 9/19/24.
+//  Created by 김도현 on 10/27/24.
 //
 
 import UIKit
 
-/// **UIBezierPath**, ** CALayer**, **CGMutablePath**을  활용한 draw 메서드를 정의하는 Protocol입니다.
-protocol BBDrawable {
-    func drawToolTip(_ frame: CGRect, type: BBToolTipType, context: CGContext)
-    func drawToolTipArrowShape(_ frame: CGRect, type: BBToolTipType, path: CGMutablePath)
-    func drawToolTipBottomShape(_ frame: CGRect, toolTipType: BBToolTipType, cornerRadius: CGFloat, path: CGMutablePath)
-    func drawToolTipTopShape(_ frame: CGRect, toolTipType: BBToolTipType, cornerRadius: CGFloat, path: CGMutablePath)
-}
+import SnapKit
+import Then
 
-
-extension BBDrawable {
+public class BBBaseToolTipView: UIView {
+    // MARK: - Properties
+    public var toolTipType: BBToolTipType
     
+    // MARK: - Intializer
+    public init(toolTipType: BBToolTipType) {
+        self.toolTipType = toolTipType
+        super.init(frame: .zero)
+    }
     
-    /// drawToolTip 메서드 호출 시 **BBToolTipType** 에 해당하는 ToolTip Layout을 **CGContext** 내에서 드로잉 하는 메서드입니다.
-    ///
-    /// drawToolTip에 frame은 UIView의 **draw(_: )**  메서드에서 호출되고 있습니다.
-    /// ToolTip Layout을 변경할 경우 **setNeedsDisplay** 메서드를 호출하시면 됩니다.
-    func drawToolTip(_ frame: CGRect, type: BBToolTipType, context: CGContext) {
+    required init?(coder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
+    }
+    
+    public override func draw(_ rect: CGRect) {
+        super.draw(rect)
+        guard let context = UIGraphicsGetCurrentContext() else { return }
+        context.saveGState()
+        drawToolTip(rect, type: toolTipType, context: context)
+        context.restoreGState()
+    }
+    
+    // MARK: - Configure
+    private func drawToolTip(_ frame: CGRect, type: BBToolTipType, context: CGContext) {
         let toolTipPath = CGMutablePath()
         
         switch type {
@@ -40,13 +50,10 @@ extension BBDrawable {
         context.setFillColor(type.configure.backgroundColor.cgColor)
         context.fillPath()
     }
-    
-    /// drawToolTipArrowShape 메서드 호출 시 ToolTip에 Arrow 모양을 드로잉 하도록 실행합니다.
-    ///
-    /// **BBToolTipType** 에 따라 Arrow의 위치가 배치됩니다.
-    func drawToolTipArrowShape(_ frame: CGRect, type: BBToolTipType, path: CGMutablePath) {
+
+    private func drawToolTipArrowShape(_ frame: CGRect, type: BBToolTipType, path: CGMutablePath) {
         let margin: CGFloat = 16
-        let arrowTipXPosition = type.xPosition.rawValue * frame.width
+        let arrowTipXPosition = type.configure.xPosition.rawValue * frame.width
         let adjustedArrowTipXPosition = min(max(arrowTipXPosition, margin + type.configure.arrowWidth / 2), frame.width - margin - type.configure.arrowWidth / 2)
         let arrowLeft = adjustedArrowTipXPosition - type.configure.arrowWidth / 2
         let arrowRight = adjustedArrowTipXPosition + type.configure.arrowWidth / 2
@@ -62,11 +69,8 @@ extension BBDrawable {
             path.addLine(to: CGPoint(x: arrowRight, y: frame.height - type.configure.arrowHeight))
         }
     }
-    
-    /// drawToolTipTopShape  메서드 실행 시 ToolTip의 **ContentShape** 영역들을 드로잉 하도록 실행합니다.
-    ///
-    /// Note: - 해당 메서드는 **BBToolTipVerticalPosition** 이 Top일 경우 실행합니다.
-    func drawToolTipTopShape(_ frame: CGRect, toolTipType: BBToolTipType, cornerRadius: CGFloat, path: CGMutablePath) {
+
+    private func drawToolTipTopShape(_ frame: CGRect, toolTipType: BBToolTipType, cornerRadius: CGFloat, path: CGMutablePath) {
         path.addArc(tangent1End: CGPoint(x: frame.maxX, y: toolTipType.configure.arrowHeight), tangent2End: CGPoint(x: frame.maxX, y: frame.maxY + frame.height), radius: cornerRadius)
         path.addArc(tangent1End: CGPoint(x: frame.maxX, y: frame.maxY), tangent2End: CGPoint(x: frame.minX, y: frame.maxY), radius: cornerRadius)
         
@@ -74,13 +78,11 @@ extension BBDrawable {
         path.addArc(tangent1End: CGPoint(x: frame.minX, y: toolTipType.configure.arrowHeight), tangent2End: CGPoint(x: frame.maxX, y: toolTipType.configure.arrowHeight), radius: cornerRadius)
     }
     
-    /// drawToolTipBottomShape  메서드 실행 시 ToolTip의 **ContentShape** 영역들을 드로잉 하도록 실행합니다.
-    ///
-    /// Note: - 해당 메서드는 **BBToolTipVerticalPosition** 이 Bottom일 경우 실행합니다.
-    func drawToolTipBottomShape(_ frame: CGRect, toolTipType: BBToolTipType, cornerRadius: CGFloat, path: CGMutablePath) {
+    private func drawToolTipBottomShape(_ frame: CGRect, toolTipType: BBToolTipType, cornerRadius: CGFloat, path: CGMutablePath) {
         path.addArc(tangent1End: CGPoint(x: frame.maxX, y: frame.height - toolTipType.configure.arrowHeight), tangent2End: CGPoint(x: frame.maxX, y: 0), radius: cornerRadius)
         path.addArc(tangent1End: CGPoint(x: frame.maxX, y: 0), tangent2End: CGPoint(x: frame.minX, y: 0), radius: cornerRadius)
         path.addArc(tangent1End: CGPoint(x: frame.minX, y: 0), tangent2End: CGPoint(x: frame.minX, y: frame.height - toolTipType.configure.arrowHeight), radius: cornerRadius)
         path.addArc(tangent1End: CGPoint(x: frame.minX, y: frame.height - toolTipType.configure.arrowHeight), tangent2End: CGPoint(x: frame.maxX, y: frame.height - toolTipType.configure.arrowHeight), radius: cornerRadius)
     }
+    
 }
