@@ -222,6 +222,7 @@ extension PrivacyViewController {
         
         let confirmAction = UIAlertAction(title: "확인", style: .default) { [weak self]_ in
             guard let self else { return }
+            BBLogManager.analytics(logType: BBEventAnalyticsLog.clickAccountButton(entry: .logout))
             self.reactor?.action.onNext(.didTapLogoutButton)
         }
         
@@ -242,6 +243,7 @@ extension PrivacyViewController {
         let confirmAction = UIAlertAction(title: "확인", style: .default) { [weak self ]_ in
             guard let self else { return }
             self.reactor?.action.onNext(.didTapFamilyUserResign)
+            BBLogManager.analytics(logType: BBEventAnalyticsLog.clickAccountButton(entry: .familyResign))
         }
         
         [cancelAction, confirmAction].forEach(resignAlertController.addAction(_:))
