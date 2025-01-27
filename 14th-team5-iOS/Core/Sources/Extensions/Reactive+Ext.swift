@@ -11,12 +11,23 @@ import WebKit
 import Kingfisher
 import RxCocoa
 import RxSwift
+import AVFoundation
 
 extension Reactive where Base: UIViewController {
+    public var viewDidLoad: ControlEvent<Bool> {
+        let event = self.methodInvoked(#selector(Base.viewDidLoad)).map { $0.first as? Bool ?? false }
+        return ControlEvent(events: event)
+    }
+    
     public var viewWillAppear: ControlEvent<Bool> {
         let event = self.methodInvoked(#selector(Base.viewWillAppear)).map { $0.first as? Bool ?? false }
         return ControlEvent(events: event)
     }
+    
+    public var viewDidDisappear: ControlEvent<Bool> {
+        let source = self.methodInvoked(#selector(Base.viewDidDisappear)).map { $0.first as? Bool ?? false }
+        return ControlEvent(events: source)
+      }
 }
 
 extension Reactive where Base: UIView {
@@ -46,22 +57,6 @@ extension Reactive where Base: UIView {
     }
 }
 
-extension Reactive where Base: UIScrollView {
-    public func reachedBottom(from space: CGFloat = 200.0) -> ControlEvent<Void> {
-        let source = contentOffset.map { contentOffset in
-            let visibleHeight = self.base.frame.height - self.base.contentInset.top - self.base.contentInset.bottom
-            let y = contentOffset.y + self.base.contentInset.top
-            let threshold = self.base.contentSize.height - visibleHeight - space
-            return y >= threshold
-        }
-        .distinctUntilChanged()
-        .filter { $0 }
-        .map { _ in () }
-        
-        return ControlEvent(events: source)
-    }
-}
-
 extension Reactive where Base: UITapGestureRecognizer {
     public var tapGesture: ControlEvent<Void> {
         let tapEvent = self.methodInvoked(#selector(Base.touchesBegan(_:with:))).map { _ in }
@@ -70,43 +65,15 @@ extension Reactive where Base: UITapGestureRecognizer {
 }
 
 extension Reactive where Base: UILabel {
-    public var isMeText: Binder<Bool> {
-        Binder(self.base) { label, isMe in
-            label.text = isMe ? "ME" : ""
-        }
-    }
     
-    public var calendarTitleText: Binder<Date> {
-        Binder(self.base) { label, date in
-            var formatString: String = .none
-            if date.isEqual([.year], with: Date()) {
-                formatString = date.toFormatString(with: .m)
-            } else {
-                formatString = date.toFormatString(with: .yyyyM)
-            }
-            label.text = formatString
-        }
-    }
-    
-    public var firtNameText: Binder<String> {
+    public var firstLetterText: Binder<String> {
         Binder(self.base) { label, text in
-            label.text = text[0]
+            if let firstLetter = text.first {
+                label.text = String(firstLetter)
+            }
         }
     }
     
-    public var memoryCountText: Binder<Int> {
-        Binder(self.base) { label, count in
-            label.text = "\(count)개의 추억"
-        }
-    }
-}
-
-extension Reactive where Base: UIStackView {
-    public var isMeSpacing: Binder<Bool> {
-        Binder(self.base) { stackView, isMe in
-            stackView.spacing = isMe ? 3.0 : 0.0
-        }
-    }
 }
 
 extension Reactive where Base: WKWebView {
@@ -120,6 +87,8 @@ extension Reactive where Base: WKWebView {
 }
 
 extension Reactive where Base: UIImageView {
+    
+    @available(*, deprecated, renamed: "kfImage")
     public var kingfisherImage: Binder<String> {
         Binder(self.base) { imageView, urlString in
             imageView.kf.setImage(
@@ -128,6 +97,85 @@ extension Reactive where Base: UIImageView {
                     .transition(.fade(0.15))
                 ]
             )
+        }
+    }
+    
+    public var kfImage: Binder<URL> {
+        // TODO: - 이미지 캐시, 트랜지션 효과 추가 구현하기
+        Binder(self.base) { imageView, url in
+            imageView.kf.setImage(with: url)
+        }
+    }
+    
+}
+
+
+public extension Reactive where Base: BBRecorderManager {
+    var requestCurrentTime: Observable<String> {
+        return Observable<String>.create { observer in
+            let timer = Timer.scheduledTimer(withTimeInterval: 0.1, repeats: true) { [weak base] _ in
+                guard let currentTime = base?.recorderCore.audioRecorder.currentTime else {
+                    return
+                }
+                
+                let recordMinutes = Int(currentTime) / 60
+                let recordSeconds = Int(currentTime) % 60
+                let formatTimes = String(format: "%01d:%02d", recordMinutes, recordSeconds)
+                
+                observer.onNext(formatTimes)
+                if currentTime >= 30.0 {
+                    observer.onCompleted()
+                }
+            }
+            RunLoop.main.add(timer, forMode: .common)
+            return Disposables.create {
+                timer.invalidate()
+            }
+        }
+    }
+    
+    var requestDecibels: Observable<[CGFloat]> {
+        return Observable.create { [weak base] observer in
+            guard let base = base else { return Disposables.create() }
+            var decibles: [CGFloat] = []
+            
+            base.inputNode.installTap(onBus: 0, bufferSize: 1024, format: base.inputNode.inputFormat(forBus: 0)) { buffer, time in
+                let realTimeDecibel = base.updateDecibels(buffer: buffer)
+                let normlizedDecibel = base.normalizeDecibel(decibel: realTimeDecibel)
+                decibles.append(CGFloat(normlizedDecibel))
+    
+                observer.onNext(decibles)
+            }
+            
+            base.audioEngine.prepare()
+            try? base.audioEngine.start()
+            
+            return Disposables.create {
+                base.inputNode.removeTap(onBus: 0)
+                base.audioEngine.stop()
+            }
+        }
+    }
+        
+    var requestMicrophonePermission: Observable<Bool> {
+        return Observable.create { observer in
+            AVAudioSession.sharedInstance().requestRecordPermission { accept in
+                if accept {
+                    do {
+                        try AVAudioSession.sharedInstance().setCategory(.playAndRecord, options: .defaultToSpeaker)
+                        try AVAudioSession.sharedInstance().setActive(true)
+                        try AVAudioSession.sharedInstance().overrideOutputAudioPort(.speaker)
+                        observer.onNext(true)
+                        observer.onCompleted()
+                    } catch {
+                        observer.onError(error)
+                    }
+                } else {
+                    observer.onNext(false)
+                    observer.onCompleted()
+                }
+            }
+            return Disposables.create()
         }
     }
 }

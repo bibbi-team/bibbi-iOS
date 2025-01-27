@@ -18,7 +18,9 @@ public enum ExtensionsLayer: String, ModuleType {
         switch self {
         case .Widget:
             return [
-                .with(.Core)
+                .with(.Core),
+                .with(.Domain),
+                .with(.Data)
             ]
         }
     }
@@ -27,49 +29,59 @@ public enum ExtensionsLayer: String, ModuleType {
 
 public enum ModuleLayer: String, CaseIterable, ModuleType {
     
-    case App
+    case Bibbi
     case Data
     case Domain
+    case Util
     case Core
     case DesignSystem
     
     
     public var dependencies: [TargetDependency] {
         switch self {
-        case .App:
+        case .Bibbi:
             return [
                 .target(name: "WidgetExtension"),
-                .external(name: "FirebaseAnalytics"),
                 .external(name: "FirebaseMessaging"),
                 .external(name: "Mixpanel"),
                 .external(name: "RxDataSources"),
-                .with(.Core),
+                .with(.Util),
                 .with(.Data),
                 .external(name: "ReactorKit"),
-                .external(name: "Lottie")
+                .external(name: "Lottie"),
+                .external(name: "Macros")
+            ]
+        case .Util:
+            return [
+                .external(name: "FirebaseAnalyticsWithoutAdIdSupport"),
+                .external(name: "FirebaseCrashlytics"),
+                .with(.Core)
             ]
         case .Data:
             return [
                 .with(.Domain),
+                .with(.Util),
                 .external(name: "Alamofire"),
                 .external(name: "KakaoSDK"),
-                .external(name: "RxKakaoSDK")
+                .external(name: "RxKakaoSDK"),
+                .external(name: "Macros")
             ]
         case .Domain:
             return [
                 .external(name: "RxSwift"),
-                .with(.Core)
+                .with(.Core),
+                .external(name: "Macros")
             ]
         case .Core:
             return [
                 .with(.DesignSystem),
-                .external(name: "SnapKit"),
-                .external(name: "Then"),
-                .external(name: "Kingfisher"),
-                .external(name: "FSCalendar"),
-                .external(name: "RxDataSources"),
-                .external(name: "SwiftKeychainWrapper"),
-                .external(name: "Lottie")
+                .external(name: "SnapKit", condition: .when(.all)),
+                .external(name: "Then", condition: .when(.all)),
+                .external(name: "Kingfisher", condition: .when(.all)),
+                .external(name: "FSCalendar", condition: .when(.all)),
+                .external(name: "RxDataSources", condition: .when(.all)),
+                .external(name: "Lottie", condition: .when(.all)),
+                .external(name: "Macros")
             ]
         case .DesignSystem:
             return [] 

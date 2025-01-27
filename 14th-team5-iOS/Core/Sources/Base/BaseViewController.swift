@@ -11,13 +11,14 @@ import DesignSystem
 import ReactorKit
 import RxSwift
 
+@available(*, deprecated, renamed: "ReactorViewController")
 open class BaseViewController<R>: UIViewController, ReactorKit.View where R: Reactor {
     public typealias Reactor = R
-
+    
     // MARK: - Properties
     public var disposeBag: RxSwift.DisposeBag = DisposeBag()
     public let navigationBarView: BibbiNavigationBarView = BibbiNavigationBarView()
-
+    
     // MARK: - Intializer
     public init() {
         super.init(nibName: nil, bundle: nil)
@@ -52,7 +53,7 @@ open class BaseViewController<R>: UIViewController, ReactorKit.View where R: Rea
                     self.navigationController?.popViewController(animated: true)
                 case .xmark:
                     self.navigationController?.popViewController(animated: true)
-//                    self.dismiss(animated: true) { self.dismissCompletion() }
+                    //                    self.dismiss(animated: true) { self.dismissCompletion() }
                 default: break
                 }
             })
@@ -60,7 +61,7 @@ open class BaseViewController<R>: UIViewController, ReactorKit.View where R: Rea
     }
     
     /// 서브 뷰 추가를 위한 메서드
-    open func setupUI() { 
+    open func setupUI() {
         view.addSubview(navigationBarView)
     }
     

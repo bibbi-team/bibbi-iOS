@@ -3,16 +3,17 @@ name: Bibbi
 on:
   push:
     branches:
-      - feat/*
-      - fix/*
+      - release
   pull_request:
     branches:
-      - release/**
+      - release
       - develop
+    types:
+      - closed
   
 jobs:  
   build:
-    runs-on: macos-13
+    runs-on: macos-latest
     strategy:
       matrix:
         xcodebuild-scheme: ['App']
@@ -24,11 +25,10 @@ jobs:
         with: 
           ruby-version: '3.2.0'
 
-
       - name: Setup Xcode version
         uses: maxim-lobanov/setup-xcode@v1
         with:
-            xcode-version: '15.0'
+            xcode-version: latest-stable
             
       - name: Checkout branch
         uses: actions/checkout@v3
@@ -43,7 +43,7 @@ jobs:
           token: ${{secrets.ACTION_TOKEN}}
         
       - name: Install Tuist CLI
-        run: bash <(curl -Ls https://install.tuist.io)
+        run: brew install tuist
         
       - name: Install FastLane 
         uses: ruby/setup-ruby@v1
@@ -55,13 +55,13 @@ jobs:
         run: tuist clean
       
       - name: Tuist Fetch Command
-        run: tuist fetch
+        run: tuist install
 
       - name: Tuist Generate Commnad
         run: tuist generate
-
-      - name: fastlane upload_stg_testflight
-        if: github.event.pull_request.base.ref == 'release' && github.head_ref == 'develop'
+                
+      - name: fastlane upload_prd_testflight
+        if: ${{ github.event_name == 'push' && startsWith(github.ref, 'refs/heads/release') }}
         env:
           APP_STORE_CONNECT_API_KEY_KEY_ID: ${{ secrets.APP_STORE_CONNECT_API_KEY_KEY_ID }}
           APP_STORE_CONNECT_API_KEY_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_API_KEY_ISSUER_ID }}
@@ -69,7 +69,7 @@ jobs:
           PROJECT_PATH: ${{ secrets.PROJECT_PATH }}
           MATCH_PASSWORD: ${{secrets.MATCH_PASSWORD}}
           MATCH_PERSONAL_TOKEN: ${{ secrets.MATCH_PERSONAL_TOKEN}}
-          DEV_SCHEME: ${{secrets.DEV_SCHEME}}
+          PRD_SCHEME: ${{secrets.PRD_SCHEME}}
           BUNDLE_ID: ${{secrets.BUNDLE_ID}}
           SLACK_HOOK_URL: ${{secrets.SLACK_HOOK_URL}}
           WIDGET_BUNDLE_ID: ${{secrets.WIDGET_BUNDLE_ID}}
@@ -80,9 +80,8 @@ jobs:
           WIDGET_NAME: ${{secrets.WIDGET_NAME}}
         run: fastlane github_action_prd_upload_testflight
 
-
-      - name: fastlane upload_prd_testflight
-        if: github.event.pull_request.base.ref == 'develop' && github.head_ref == 'feature'
+      - name: fastlane upload_stg_testflight
+        if: ${{ github.event.pull_request.merged == true && github.event.pull_request.base.ref == 'develop' }}
         env:
           APP_STORE_CONNECT_API_KEY_KEY_ID: ${{ secrets.APP_STORE_CONNECT_API_KEY_KEY_ID }}
           APP_STORE_CONNECT_API_KEY_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_API_KEY_ISSUER_ID }}
@@ -91,7 +90,7 @@ jobs:
           MATCH_PASSWORD: ${{secrets.MATCH_PASSWORD}}
           SLACK_HOOK_URL: ${{secrets.SLACK_HOOK_URL}}
           MATCH_PERSONAL_TOKEN: ${{ secrets.MATCH_PERSONAL_TOKEN}}
-          PRD_SCHEME: ${{secrets.PRD_SCHEME}}
+          DEV_SCHEME: ${{secrets.DEV_SCHEME}}
           BUNDLE_ID: ${{secrets.BUNDLE_ID}}
           WIDGET_BUNDLE_ID: ${{secrets.WIDGET_BUNDLE_ID}}
           PROFILE_PATH: ${{secrets.PROFILE_PATH}}

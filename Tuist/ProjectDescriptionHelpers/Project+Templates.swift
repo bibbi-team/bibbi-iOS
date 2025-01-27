@@ -11,7 +11,7 @@ public struct AppFactory {
     var products: [ProductsType]
     var dependencies: [TargetDependency]
     var bundleId: String
-    var deploymentTarget: DeploymentTarget?
+    var deploymentTarget: DeploymentTargets?
     var infoPlist: InfoPlist?
     var sources: SourceFilesList?
     var resources: ResourceFileElements?
@@ -23,10 +23,10 @@ public struct AppFactory {
     public init(
         name: String = "bibbi",
         platform: Platform = .iOS,
-        products: [ProductsType] = [.app, .uiTests, .unitTests],
+        products: [ProductsType] = [.bibbi, .uiTests, .unitTests],
         dependencies: [TargetDependency] = [],
         bundleId: String,
-        deploymentTarget: DeploymentTarget? = .defualt,
+        deploymentTarget: DeploymentTargets? = .defualt,
         infoPlist: InfoPlist? = .default,
         sources: SourceFilesList? = .default,
         resources: ResourceFileElements? = .default,
@@ -58,8 +58,8 @@ extension Project {
             name: name,
             settings: .settings(
                 base: [
-                    "OTHER_LDFLAGS": ["-ObjC"],
-                    "MARKETING_VERSION": "1.0",
+                    "OTHER_LDFLAGS": "$(inherited) -ObjC",
+                    "MARKETING_VERSION": "1.2.6",
                     "CURRENT_PROJECT_VERSION": "1",
                     "VERSIONING_SYSTEM": "apple-generic"
                 ],

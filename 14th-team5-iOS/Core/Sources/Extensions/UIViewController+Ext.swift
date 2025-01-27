@@ -12,11 +12,14 @@ import SnapKit
 import Then
 
 extension UIViewController {
+    
+    @available(*, deprecated, message: "BBToast를 사용하세요.")
     public enum ToastDirection {
         case up
         case down
     }
     
+    @available(*, deprecated, message: "BBToast를 사용하세요.")
     public func makeErrorBibbiToastView(
         delay: CGFloat = 0.6,
         duration: CGFloat = 0.6,
@@ -31,6 +34,7 @@ extension UIViewController {
         )
     }
     
+    @available(*, deprecated, message: "BBToast를 사용하세요.")
     public func makeActionBibbiToastView(
         text: String = "",
         transtionText: String = "",
@@ -48,6 +52,7 @@ extension UIViewController {
         )
     }
     
+    @available(*, deprecated, message: "BBToast를 사용하세요.")
     public func makeTranstionToastView(
         text: String = "",
         transtionText: String = "",
@@ -71,6 +76,7 @@ extension UIViewController {
         }
     }
     
+    @available(*, deprecated, message: "BBToast를 사용하세요.")
     public func makeBibbiToastView(
         text: String,
         image: DesignSystemImages.Image? = nil,
@@ -140,37 +146,6 @@ extension UIViewController {
         }
         
         return toastView
-    }
-}
-
-extension UIViewController {
-    public func makeSharePanel(
-        _ activityItemSources: [UIActivityItemSource],
-        activities: [UIActivity],
-        excludedActivityTypes: [UIActivity.ActivityType] = [.addToReadingList, .copyToPasteboard]
-    ) {
-        let items: [Any] = activityItemSources
-        let activityVC = UIActivityViewController(
-            activityItems: items,
-            applicationActivities: activities
-        )
-        activityVC.excludedActivityTypes = excludedActivityTypes
-        present(activityVC, animated: true)
-    }
-    
-    /// 친구 초대 공유 시트를 보여줍니다.
-    /// - Parameters:
-    ///   - url: 공유할 URL
-    ///   - globalState: GlobalState (선택)
-    public func makeInvitationUrlSharePanel(_ url: URL?, provider globalState: GlobalStateProviderProtocol? = nil) {
-        guard let url = url else { return }
-        let itemSource = UrlActivityItemSource(
-            title: "삐삐! 가족에게 보내는 하루 한번 생존 신고",
-            url: url
-        )
-        let copyToPastboard = CopyInvitationUrlActivity(url, provider: globalState)
-        
-        makeSharePanel([itemSource], activities: [copyToPastboard])
     }
 }
 

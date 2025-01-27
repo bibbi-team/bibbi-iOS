@@ -20,6 +20,63 @@ extension String {
         return false
     }
     
+    public func toTimeInSeconds(_ type: TimeComponents) -> Double? {
+        let components = self.split(separator: ":").compactMap { Double($0) }
+        switch type {
+        case .hours:
+            let hours = components[0]
+            let minutes = components[1]
+            let seconds = components[2]
+            
+            return (hours * 3600) + (minutes * 60) + seconds
+        case .minutes:
+            let minutes = components[0]
+            let seconds = components[1]
+            
+            return (minutes * 60) + seconds
+        case .seconds:
+            let seconds = components.last
+            return seconds
+        }
+    }
+}
+
+extension String {
+    public func toSnakeCase() -> String {
+        var result = ""
+        var previousStringWasCapitalized = false
+        var previousStringWasNumber = false
+
+        for (index, string) in self.enumerated() {
+            var mutableString = String(string)
+
+            if !mutableString.isAlphabet {
+                if index != 0,
+                   !previousStringWasNumber {
+                    mutableString = "_" + mutableString
+                }
+                previousStringWasNumber = true
+            } else if mutableString == mutableString.uppercased() {
+                mutableString = mutableString.lowercased()
+
+                if index != 0,
+                   !previousStringWasCapitalized {
+                    mutableString = "_" + mutableString
+                }
+                previousStringWasCapitalized = true
+            } else {
+                previousStringWasCapitalized = false
+                previousStringWasNumber = false
+            }
+            result += mutableString
+        }
+        return result
+    }
+    
+    public var isAlphabet: Bool {
+        let alphabetSet = CharacterSet.uppercaseLetters.union(.lowercaseLetters).union(.whitespacesAndNewlines)
+        return self.rangeOfCharacter(from: alphabetSet.inverted) == nil
+    }
     
     public func toDate(with format: String = "yyyy-MM-dd") -> Date {
         let dateFormatter = DateFormatter.withFormat(format)
@@ -36,9 +93,19 @@ extension String {
         guard let date = dateFormatter.date(from: self) else { return .now }
         return date
     }
+    
+    public func toDate() -> Date? {
+        let dateFormatter = DateFormatter()
+        dateFormatter.locale = Locale.current
+        dateFormatter.dateFormat = "yyyy-MM-dd"
+        return dateFormatter.date(from: self)
+    }
 }
 
 extension String {
+    
+    /// 특정 `Index`에 위치한 문자열을 반환합니다.
+    ///  - Returns: 해당 위치에 문자열이 있다면 `String?`을, 없다면 `nil`을 반환합니다.
     public subscript(_ index: Int) -> String? {
         guard index >= 0 && index < count else {
             return nil
@@ -47,4 +114,5 @@ extension String {
         let index = self.index(self.startIndex, offsetBy: index)
         return String(self[index])
     }
+    
 }
